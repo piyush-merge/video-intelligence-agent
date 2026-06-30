@@ -216,3 +216,15 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# Video Intelligence Agent additions
+*.mp3
+*.wav
+*.mp4
+*.m4a
+*.webm
+
+credentials.json
+service_account.json
+.env
