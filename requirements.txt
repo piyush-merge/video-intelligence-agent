@@ -1,0 +1,11 @@
+gradio
+yt-dlp
+openai-whisper
+gspread
+google-auth
+oauth2client
+requests
+sentence-transformers
+numpy
+python-dotenv
+ffmpeg-python
