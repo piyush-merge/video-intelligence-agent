@@ -62,6 +62,10 @@ def summarize(text):
 # SAVE TO SHEETS
 # -----------------------
 def save_video(url, summary, transcript):
+    if video_sheet is None:
+        print("Sheets disabled: video log skipped")
+        return
+
     video_sheet.append_row([
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         url,
@@ -71,13 +75,16 @@ def save_video(url, summary, transcript):
 
 
 def log_qa(url, question, answer):
+    if qa_sheet is None:
+        print("Sheets disabled: QnA log skipped")
+        return
+
     qa_sheet.append_row([
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         url,
         question,
         answer
     ])
-
 
 # -----------------------
 # PIPELINE
