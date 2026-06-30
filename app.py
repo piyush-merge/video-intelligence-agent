@@ -2,27 +2,15 @@ import gradio as gr
 import yt_dlp
 import whisper
 from datetime import datetime
-import gspread
 
-SHEETS_ENABLED = True
+# -----------------------
+# OPTIONAL STORAGE (HF SAFE)
+# -----------------------
+SHEETS_ENABLED = False
+video_sheet = None
+qa_sheet = None
 
-try:
-    from google.auth import default
-
-    creds, _ = default()
-    gc = gspread.authorize(creds)
-
-    SHEET_ID = "YOUR_SHEET_ID"
-
-    sh = gc.open_by_key(SHEET_ID)
-    video_sheet = sh.worksheet("Sheet1")
-    qa_sheet = sh.worksheet("QnA_Log")
-
-except Exception as e:
-    print("Google Sheets disabled (HF environment):", e)
-    SHEETS_ENABLED = False
-    video_sheet = None
-    qa_sheet = None
+print("Sheets disabled (Hugging Face environment)")
 
 # -----------------------
 # MODEL
@@ -31,13 +19,10 @@ model = whisper.load_model("tiny")
 
 current_url = None
 
-
 # -----------------------
 # AUDIO EXTRACTION
 # -----------------------
 def get_audio(url):
-    import os
-
     ydl_opts = {
         'format': 'bestaudio/best',
         'outtmpl': 'audio.%(ext)s',
@@ -47,9 +32,9 @@ def get_audio(url):
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
-        file = ydl.prepare_filename(info)
+        file_path = ydl.prepare_filename(info)
 
-    return file
+    return file_path
 
 
 # -----------------------
@@ -60,39 +45,22 @@ def transcribe(audio_path):
 
 
 # -----------------------
-# SUMMARY (simple placeholder)
+# SUMMARY (placeholder)
 # -----------------------
 def summarize(text):
     return f"Summary:\n{text[:500]}"
 
 
 # -----------------------
-# SAVE TO SHEETS
+# SAVE (SAFE NO-OP)
 # -----------------------
 def save_video(url, summary, transcript):
-    if video_sheet is None:
-        print("Sheets disabled: video log skipped")
-        return
-
-    video_sheet.append_row([
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        url,
-        summary,
-        transcript[:3000]
-    ])
+    print("Save skipped (no DB configured)")
 
 
 def log_qa(url, question, answer):
-    if qa_sheet is None:
-        print("Sheets disabled: QnA log skipped")
-        return
+    print("QnA log skipped (no DB configured)")
 
-    qa_sheet.append_row([
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        url,
-        question,
-        answer
-    ])
 
 # -----------------------
 # PIPELINE
@@ -104,7 +72,7 @@ def process_video(url):
     audio = get_audio(url)
     result = transcribe(audio)
 
-    text = result["text"]
+    text = result.get("text", "")
     segments = result.get("segments", [])
 
     summary = summarize(text)
@@ -115,9 +83,12 @@ def process_video(url):
 
 
 # -----------------------
-# Q&A
+# Q&A ENGINE
 # -----------------------
 def answer_question(question, segments):
+    if not segments:
+        return "No transcript available."
+
     context = " ".join([s.get("text", "") for s in segments])
 
     return context[:1000]
