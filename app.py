@@ -1,22 +1,24 @@
-import gradio as gr
-import yt_dlp
-import whisper
-from datetime import datetime
-
 import gspread
-from google.auth import default
 
-# -----------------------
-# SHEETS SETUP
-# -----------------------
-creds, _ = default()
-gc = gspread.authorize(creds)
+SHEETS_ENABLED = True
 
-SHEET_ID = "YOUR_SHEET_ID"
+try:
+    from google.auth import default
 
-sh = gc.open_by_key(SHEET_ID)
-video_sheet = sh.worksheet("Sheet1")
-qa_sheet = sh.worksheet("QnA_Log")
+    creds, _ = default()
+    gc = gspread.authorize(creds)
+
+    SHEET_ID = "YOUR_SHEET_ID"
+
+    sh = gc.open_by_key(SHEET_ID)
+    video_sheet = sh.worksheet("Sheet1")
+    qa_sheet = sh.worksheet("QnA_Log")
+
+except Exception as e:
+    print("Google Sheets disabled (HF environment):", e)
+    SHEETS_ENABLED = False
+    video_sheet = None
+    qa_sheet = None
 
 # -----------------------
 # MODEL
