@@ -1,3 +1,7 @@
+import gradio as gr
+import yt_dlp
+import whisper
+from datetime import datetime
 import gspread
 
 SHEETS_ENABLED = True
@@ -23,7 +27,7 @@ except Exception as e:
 # -----------------------
 # MODEL
 # -----------------------
-model = whisper.load_model("base")
+model = whisper.load_model("tiny")
 
 current_url = None
 
@@ -32,6 +36,8 @@ current_url = None
 # AUDIO EXTRACTION
 # -----------------------
 def get_audio(url):
+    import os
+
     ydl_opts = {
         'format': 'bestaudio/best',
         'outtmpl': 'audio.%(ext)s',
@@ -41,7 +47,9 @@ def get_audio(url):
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
-        return ydl.prepare_filename(info)
+        file = ydl.prepare_filename(info)
+
+    return file
 
 
 # -----------------------
@@ -97,7 +105,7 @@ def process_video(url):
     result = transcribe(audio)
 
     text = result["text"]
-    segments = result["segments"]
+    segments = result.get("segments", [])
 
     summary = summarize(text)
 
