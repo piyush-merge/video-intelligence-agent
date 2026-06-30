@@ -3,21 +3,28 @@ import yt_dlp
 import whisper
 from datetime import datetime
 
-# -----------------------
-# OPTIONAL STORAGE (HF SAFE)
-# -----------------------
-SHEETS_ENABLED = False
-video_sheet = None
-qa_sheet = None
+import gspread
+from google.auth import default
 
-print("Sheets disabled (Hugging Face environment)")
+# -----------------------
+# SHEETS SETUP
+# -----------------------
+creds, _ = default()
+gc = gspread.authorize(creds)
+
+SHEET_ID = "YOUR_SHEET_ID"
+
+sh = gc.open_by_key(SHEET_ID)
+video_sheet = sh.worksheet("Sheet1")
+qa_sheet = sh.worksheet("QnA_Log")
 
 # -----------------------
 # MODEL
 # -----------------------
-model = whisper.load_model("tiny")
+model = whisper.load_model("base")
 
 current_url = None
+
 
 # -----------------------
 # AUDIO EXTRACTION
@@ -32,9 +39,7 @@ def get_audio(url):
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
-        file_path = ydl.prepare_filename(info)
-
-    return file_path
+        return ydl.prepare_filename(info)
 
 
 # -----------------------
@@ -45,21 +50,31 @@ def transcribe(audio_path):
 
 
 # -----------------------
-# SUMMARY (placeholder)
+# SUMMARY (simple placeholder)
 # -----------------------
 def summarize(text):
     return f"Summary:\n{text[:500]}"
 
 
 # -----------------------
-# SAVE (SAFE NO-OP)
+# SAVE TO SHEETS
 # -----------------------
 def save_video(url, summary, transcript):
-    print("Save skipped (no DB configured)")
+    video_sheet.append_row([
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        url,
+        summary,
+        transcript[:3000]
+    ])
 
 
 def log_qa(url, question, answer):
-    print("QnA log skipped (no DB configured)")
+    qa_sheet.append_row([
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        url,
+        question,
+        answer
+    ])
 
 
 # -----------------------
@@ -72,8 +87,8 @@ def process_video(url):
     audio = get_audio(url)
     result = transcribe(audio)
 
-    text = result.get("text", "")
-    segments = result.get("segments", [])
+    text = result["text"]
+    segments = result["segments"]
 
     summary = summarize(text)
 
@@ -83,12 +98,9 @@ def process_video(url):
 
 
 # -----------------------
-# Q&A ENGINE
+# Q&A
 # -----------------------
 def answer_question(question, segments):
-    if not segments:
-        return "No transcript available."
-
     context = " ".join([s.get("text", "") for s in segments])
 
     return context[:1000]
